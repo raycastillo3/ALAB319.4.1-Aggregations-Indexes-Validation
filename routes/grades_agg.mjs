@@ -22,64 +22,65 @@ router.get("/stats", async (req, res, next) => {
   let collection = await db.collection("grades"); 
 
   let result = await collection.aggregate([
-    {
-      $unwind: { path: "$scores" },
+    { 
+      "$unwind": "$scores" 
     },
-    {
-      $group: {
-        _id: "$class_id",
-        quiz: {
-          $push: {
-            $cond: {
-              if: { $eq: ["$scores.type", "quiz"] },
-              then: "$scores.score",
-              else: "$$REMOVE",
-            },
-          },
-        },
-        exam: {
-          $push: {
-            $cond: {
-              if: { $eq: ["$scores.type", "exam"] },
-              then: "$scores.score",
-              else: "$$REMOVE",
-            },
-          },
-        },
-        homework: {
-          $push: {
-            $cond: {
-              if: { $eq: ["$scores.type", "homework"] },
-              then: "$scores.score",
-              else: "$$REMOVE",
-            },
-          },
-        },
+  {
+    "$group": {
+      "_id": "$learner_id",
+      "exams": {
+        "$push": {
+          "$cond": [
+            { "$eq": ["$scores.type", "exam"] },
+            "$scores.score",
+            "$$REMOVE"
+          ]
+        }
       },
-    },
-    {
-      $project: {
-        _id: 0,
-        class_id: "$_id",
-        avg: {
-          $sum: [
-            { $multiply: [{ $avg: "$exam" }, 0.5] },
-            { $multiply: [{ $avg: "$quiz" }, 0.3] },
-            { $multiply: [{ $avg: "$homework" }, 0.2] },
-          ],
-        },
+      "quizzes": {
+        "$push": {
+          "$cond": [
+            { "$eq": ["$scores.type", "quiz"] },
+            "$scores.score",
+            "$$REMOVE"
+          ]
+        }
       },
-    },
-    {
-      $match: { avg: {$gte: 70} },
-    },
+      "homework": {
+        "$push": {
+          "$cond": [
+            { "$eq": ["$scores.type", "homework"] },
+            "$scores.score",
+            "$$REMOVE"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "$project": {
+      _id: 0,
+      class_id: "$_id",
+      "avg": {
+        "$sum": [
+          { "$multiply": [{ "$avg": "$exams" }, 0.5] },
+          { "$multiply": [{ "$avg": "$quizzes" }, 0.3] },
+          { "$multiply": [{ "$avg": "$homework" }, 0.2] }
+        ]
+      }
+    }
+  },
+
+  // Step 4: Filter learners with a weighted average above 70
+  { "$match": { "avg": { "$gt": 70 } } }
   ])
   .toArray();
+
   const totalLearners = (await collection.distinct("learner_id")).length; 
-  const learnersAbove70 = result.length; 
-  const percentAbove70 = (learnersAbove70 / totalLearners)*100
+  const learnersWith70 = result.length; 
+  const percentageOfLearners = (learnersWith70 / totalLearners)*100
   if (!result) res.send("Not found").status(404);
-  else res.send({result, totalLearners, learnersAbove70, percentAbove70}).status(200);
+  else res.send({totalLearners, learnersWith70, percentageOfLearners}).status(200);
 })
 
 // Get the weighted average of a specified learner's grades, per class
@@ -128,7 +129,7 @@ router.get("/learner/:id/avg-class", async (req, res) => {
       },
       {
         $project: {
-          _id: 0,
+          _id: "$learner_id",
           class_id: "$_id",
           avg: {
             $sum: [
