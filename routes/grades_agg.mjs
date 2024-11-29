@@ -65,7 +65,7 @@ async function validatingSchema() {
 
 validatingSchema();
 
-//use this function to try to insert an invalid document. 
+//use this function to try to insert an invalid document.
 async function insertOneTest() {
   await db.collection("grades").insertOne({
     class_id: '33390',
@@ -76,8 +76,7 @@ async function insertOneTest() {
   //   class_id:'hello'
   // })
 }
-
-insertOneTest();
+// insertOneTest();
 
 // route /grades/stats:
 router.get("/stats", async (req, res, next) => {
