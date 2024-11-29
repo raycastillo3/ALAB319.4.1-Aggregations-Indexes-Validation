@@ -2,6 +2,7 @@ import express from "express";
 import db from "../db/conn.mjs";
 import { ObjectId } from "mongodb";
 
+
 const router = express.Router();
 
 /**
@@ -17,6 +18,66 @@ const router = express.Router();
  * - Quizes: 30%
  * - Homework: 20%
  */
+// single-field indexes:
+async function createIndexes() {
+  //single field index
+  await db.collection("grades").createIndex({ class_id: 1 });
+  await db.collection("grades").createIndex({ learner_id: 1 });
+
+  //compound index
+  await db.collection("grades").createIndex({learner_id: 1, class_id: 1})
+
+}
+createIndexes();
+
+async function validatingSchema() {
+  const schema = {
+    validator: {
+      $jsonSchema: {
+        bsonType: "object",
+        required: ["class_id", "learner_id"],
+        properties: {
+          class_id: {
+            bsonType: "int",
+            minimum: 0,
+            maximum: 300,
+            exclusiveMaximum: false,
+            description: "class_id must be an integer.",
+          },
+          learner_id: {
+            bsonType: "int",
+            minimum: 0,
+            description: "ID must be an integer & must be greater than or equal to 0",
+          },
+        },
+      },
+    },
+    validationAction: "warn",
+    validationLevel: "strict",
+  }
+  await db.command({
+    collMod: "grades",
+    validator: schema.validator,
+    validationAction: "error",
+    validationLevel: "strict"
+  });
+}
+
+validatingSchema();
+
+//use this function to try to insert an invalid document. 
+async function insertOneTest() {
+  await db.collection("grades").insertOne({
+    class_id: '33390',
+    learner_id: '2',
+    scores: [{ type: 'exam', score: 80 }, { type: 'quiz', score: 70}, {type: 'homework', score: 90}, {type: 'homework', score: 100}]
+  })
+  // await db.collection("grades").deleteMany({
+  //   class_id:'hello'
+  // })
+}
+
+insertOneTest();
 
 // route /grades/stats:
 router.get("/stats", async (req, res, next) => {
