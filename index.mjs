@@ -3,7 +3,7 @@ import express from "express";
 const PORT = 5050;
 const app = express();
 
-import grades from "./routes/grades.mjs";
+// import grades from "./routes/grades.mjs";
 import grades_agg from "./routes/grades_agg.mjs";
 
 app.use(express.json());
@@ -12,7 +12,7 @@ app.get("/", (req, res) => {
   res.send("Welcome to the API.");
 });
 
-app.use("/grades", grades);
+// app.use("/grades", grades);
 app.use("/grades", grades_agg);
 
 // Global error handling
